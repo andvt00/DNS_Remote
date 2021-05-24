@@ -2,7 +2,7 @@
 from scapy.all import*
 # Construct the DNS header and payload
 name   = 'twysw.example.com'
-domain = 'ns.attacker32.com'
+domain = 'example.com'
 ns = '10.9.0.153'
 
 Qdsec  = DNSQR(qname=name)
